@@ -33,9 +33,16 @@ function getLocalIP() {
 
 const localIP = getLocalIP();
 
+function getSubmitURL() {
+  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+    return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}/submit`;
+  }
+  return `http://${localIP}:${PORT}/submit`;
+}
+
 app.get('/qr', async (req, res) => {
   try {
-    const url = `http://${localIP}:3000/submit`;
+    const url = getSubmitURL();
     const qrDataURL = await QRCode.toDataURL(url, {
       width: 220,
       margin: 2,
@@ -78,7 +85,7 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log('\n╔══════════════════════════════════════════╗');
   console.log('║           心禱牆  Prayer Wall             ║');
