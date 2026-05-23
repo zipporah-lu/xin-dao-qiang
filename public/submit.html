@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>送出祈禱 · 心禱牆</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      background: linear-gradient(155deg, #050f1f 0%, #0d0a1e 50%, #120808 100%);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'PingFang TC', 'Noto Serif TC', 'Microsoft JhengHei', serif;
+      padding: 32px 20px;
+      color: #f0e8d0;
+    }
+
+    /* Subtle background glow dots */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 55% 30% at 15% 85%, rgba(120, 80, 200, 0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 45% 25% at 85% 20%, rgba(200, 130, 40, 0.06) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 36px;
+      position: relative;
+    }
+
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 300;
+      letter-spacing: 0.55em;
+      color: rgba(255, 220, 140, 0.88);
+      text-shadow: 0 0 30px rgba(255, 195, 80, 0.35);
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      font-size: 0.78rem;
+      letter-spacing: 0.2em;
+      color: rgba(255, 255, 255, 0.28);
+    }
+
+    .card {
+      width: 100%;
+      max-width: 440px;
+      background: rgba(255, 240, 200, 0.035);
+      border: 1px solid rgba(255, 210, 110, 0.15);
+      border-radius: 22px;
+      padding: 28px 24px 24px;
+      backdrop-filter: blur(16px);
+      position: relative;
+    }
+
+    textarea {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 210, 110, 0.18);
+      border-radius: 14px;
+      padding: 16px;
+      color: rgba(255, 248, 225, 0.9);
+      font-size: 1.05rem;
+      font-family: inherit;
+      line-height: 1.75;
+      resize: none;
+      min-height: 130px;
+      max-height: 230px;
+      outline: none;
+      transition: border-color 0.25s, box-shadow 0.25s;
+      caret-color: rgba(255, 210, 110, 0.8);
+    }
+
+    textarea::placeholder { color: rgba(255, 255, 255, 0.22); }
+
+    textarea:focus {
+      border-color: rgba(255, 210, 110, 0.42);
+      box-shadow: 0 0 0 3px rgba(255, 190, 80, 0.08);
+    }
+
+    .char-count {
+      text-align: right;
+      font-size: 0.68rem;
+      color: rgba(255, 255, 255, 0.2);
+      margin-top: 6px;
+      letter-spacing: 0.05em;
+      transition: color 0.2s;
+    }
+    .char-count.near { color: rgba(255, 180, 80, 0.5); }
+
+    button {
+      display: block;
+      width: 100%;
+      margin-top: 18px;
+      padding: 15px 24px;
+      background: linear-gradient(135deg, rgba(230, 165, 50, 0.82), rgba(200, 110, 30, 0.68));
+      border: 1px solid rgba(255, 200, 80, 0.25);
+      border-radius: 14px;
+      color: rgba(255, 252, 240, 0.96);
+      font-size: 1.05rem;
+      font-family: inherit;
+      letter-spacing: 0.3em;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.2s;
+      text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+      -webkit-appearance: none;
+    }
+
+    button:hover {
+      background: linear-gradient(135deg, rgba(250, 185, 70, 0.9), rgba(220, 130, 50, 0.76));
+      box-shadow: 0 4px 24px rgba(230, 155, 40, 0.25);
+      transform: translateY(-1px);
+    }
+
+    button:active { transform: translateY(0); box-shadow: none; }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: default;
+      transform: none;
+    }
+
+    /* Confirmation */
+    .confirm-wrap {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 18px;
+    }
+
+    .confirm {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(180, 230, 160, 0.07);
+      border: 1px solid rgba(180, 230, 160, 0.18);
+      border-radius: 30px;
+      padding: 10px 20px;
+      color: rgba(200, 240, 180, 0.88);
+      font-size: 0.95rem;
+      letter-spacing: 0.08em;
+      opacity: 0;
+      transition: opacity 0.5s;
+      pointer-events: none;
+    }
+
+    .confirm.show { opacity: 1; }
+
+    .dove {
+      font-size: 1.1rem;
+      animation: doveFloat 2s ease-in-out infinite alternate;
+    }
+
+    @keyframes doveFloat {
+      0%   { transform: translateY(0); }
+      100% { transform: translateY(-4px); }
+    }
+
+    /* Status dot */
+    .status {
+      position: absolute;
+      top: 14px;
+      right: 18px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: rgba(255, 80, 80, 0.6);
+      transition: background 0.4s;
+    }
+    .status.connected { background: rgba(120, 220, 120, 0.7); }
+
+    /* Footer */
+    .footer {
+      margin-top: 28px;
+      font-size: 0.68rem;
+      color: rgba(255, 255, 255, 0.15);
+      letter-spacing: 0.15em;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>心禱牆</h1>
+    <p>你的祈禱將匿名送出，無需登入</p>
+  </div>
+
+  <div class="card">
+    <div class="status" id="status" title="連線狀態"></div>
+    <textarea
+      id="prayer-input"
+      placeholder="此刻你心裡想對神說的一句話…"
+      maxlength="100"
+      rows="4"
+      autocomplete="off"
+      autocorrect="off"
+      spellcheck="false"
+    ></textarea>
+    <div class="char-count" id="char-count">0 / 100</div>
+    <button id="submit-btn" onclick="submitPrayer()" disabled>送出祈禱</button>
+    <div class="confirm-wrap">
+      <div class="confirm" id="confirm">
+        <span class="dove">🕊️</span>
+        <span>你的祈禱已送出</span>
+      </div>
+    </div>
+  </div>
+
+  <p class="footer">Prayer Wall · 心禱牆</p>
+
+  <script>
+    const input      = document.getElementById('prayer-input');
+    const btn        = document.getElementById('submit-btn');
+    const confirmEl  = document.getElementById('confirm');
+    const charCount  = document.getElementById('char-count');
+    const statusDot  = document.getElementById('status');
+
+    let ws, confirmTimer, isReady = false;
+
+    function setReady(v) {
+      isReady = v;
+      statusDot.className = 'status' + (v ? ' connected' : '');
+      updateBtn();
+    }
+
+    function updateBtn() {
+      btn.disabled = !isReady || input.value.trim().length === 0;
+    }
+
+    input.addEventListener('input', () => {
+      const len = input.value.length;
+      charCount.textContent = `${len} / 100`;
+      charCount.className = 'char-count' + (len >= 80 ? ' near' : '');
+      updateBtn();
+    });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) {
+        e.preventDefault();
+        if (!btn.disabled) submitPrayer();
+      }
+    });
+
+    function submitPrayer() {
+      const text = input.value.trim();
+      if (!text || !isReady) return;
+
+      ws.send(JSON.stringify({ type: 'prayer', text }));
+
+      input.value = '';
+      charCount.textContent = '0 / 100';
+      charCount.className = 'char-count';
+      updateBtn();
+      input.focus();
+
+      clearTimeout(confirmTimer);
+      confirmEl.classList.add('show');
+      confirmTimer = setTimeout(() => confirmEl.classList.remove('show'), 3500);
+    }
+
+    function connect() {
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${proto}//${location.host}/?role=submit`);
+
+      ws.onopen  = () => setReady(true);
+      ws.onclose = () => { setReady(false); setTimeout(connect, 3000); };
+      ws.onerror = () => ws.close();
+    }
+    connect();
+  </script>
+</body>
+</html>

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>心禱牆</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #030d1a;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      font-family: 'PingFang TC', 'Noto Serif TC', 'Microsoft JhengHei', 'Source Han Serif TC', serif;
+    }
+
+    /* Star field canvas */
+    #canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    /* Slow ambient glow */
+    #ambient {
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 20% 80%, rgba(100, 60, 200, 0.06) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 35% at 80% 70%, rgba(200, 120, 40, 0.05) 0%, transparent 70%);
+      pointer-events: none;
+      animation: ambientShift 20s ease-in-out infinite alternate;
+    }
+
+    @keyframes ambientShift {
+      0%   { opacity: 0.6; }
+      50%  { opacity: 1; }
+      100% { opacity: 0.7; }
+    }
+
+    /* Prayer bubble layer */
+    #wall {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .bubble {
+      position: absolute;
+      bottom: -80px;
+      padding: 10px 18px;
+      border-radius: 30px;
+      white-space: nowrap;
+      max-width: 82vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      animation: floatUp var(--dur) cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+      pointer-events: none;
+    }
+
+    @keyframes floatUp {
+      0%   { transform: translateY(0)            translateX(0);                opacity: 0; }
+      6%   { opacity: 1; }
+      28%  { transform: translateY(calc(-28vh))  translateX(var(--d1)); }
+      55%  { transform: translateY(calc(-55vh))  translateX(var(--d2)); }
+      82%  { transform: translateY(calc(-82vh))  translateX(var(--d3)); opacity: 0.75; }
+      100% { transform: translateY(calc(-112vh)) translateX(var(--d1)); opacity: 0; }
+    }
+
+    /* Title */
+    #title {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 36px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    #title h1 {
+      font-size: clamp(1.6rem, 3vw, 2.4rem);
+      font-weight: 300;
+      letter-spacing: 0.6em;
+      color: rgba(255, 225, 160, 0.7);
+      text-shadow:
+        0 0 20px rgba(255, 200, 100, 0.4),
+        0 0 60px rgba(255, 180, 80, 0.2);
+      animation: titlePulse 6s ease-in-out infinite alternate;
+    }
+
+    #title p {
+      margin-top: 8px;
+      font-size: 0.75rem;
+      letter-spacing: 0.3em;
+      color: rgba(255, 255, 255, 0.2);
+    }
+
+    @keyframes titlePulse {
+      0%   { text-shadow: 0 0 20px rgba(255, 200, 100, 0.3), 0 0 60px rgba(255, 180, 80, 0.1); }
+      100% { text-shadow: 0 0 30px rgba(255, 200, 100, 0.6), 0 0 80px rgba(255, 180, 80, 0.3); }
+    }
+
+    /* QR / Info panel */
+    #info {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      z-index: 20;
+      text-align: center;
+    }
+
+    #info-inner {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 240, 200, 0.05);
+      border: 1px solid rgba(255, 215, 120, 0.18);
+      border-radius: 18px;
+      padding: 16px 16px 12px;
+      backdrop-filter: blur(12px);
+    }
+
+    #info-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.25em;
+      color: rgba(255, 220, 140, 0.5);
+    }
+
+    #qr-img {
+      width: 110px;
+      height: 110px;
+      border-radius: 10px;
+      display: block;
+    }
+
+    #url-text {
+      font-size: 0.62rem;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      color: rgba(255, 215, 120, 0.55);
+      letter-spacing: 0.04em;
+    }
+
+    /* Waiting hint (shown when no prayers yet) */
+    #hint {
+      position: fixed;
+      bottom: 50%;
+      left: 50%;
+      transform: translate(-50%, 50%);
+      color: rgba(255, 255, 255, 0.08);
+      font-size: 0.9rem;
+      letter-spacing: 0.25em;
+      pointer-events: none;
+      transition: opacity 1s;
+      z-index: 5;
+    }
+
+    #hint.hide { opacity: 0; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="ambient"></div>
+  <div id="wall"></div>
+
+  <div id="title">
+    <h1>心禱牆</h1>
+    <p>Prayer Wall</p>
+  </div>
+
+  <p id="hint">等候祈禱中…</p>
+
+  <div id="info">
+    <div id="info-inner">
+      <span id="info-label">掃碼送出祈禱</span>
+      <img id="qr-img" src="" alt="QR Code" />
+      <span id="url-text">載入中…</span>
+    </div>
+  </div>
+
+  <script>
+    /* ── Star field ── */
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let W, H, stars = [];
+
+    function resize() {
+      W = canvas.width  = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    function mkStar() {
+      return {
+        x: Math.random() * W,
+        y: Math.random() * H,
+        r: Math.random() * 1.2 + 0.2,
+        base: Math.random() * 0.5 + 0.1,
+        phase: Math.random() * Math.PI * 2,
+        speed: 0.008 + Math.random() * 0.012,
+      };
+    }
+    for (let i = 0; i < 160; i++) stars.push(mkStar());
+
+    function drawStars(ts) {
+      ctx.clearRect(0, 0, W, H);
+      for (const s of stars) {
+        s.phase += s.speed;
+        const a = s.base * (0.4 + 0.6 * Math.sin(s.phase));
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 230, 190, ${a})`;
+        ctx.fill();
+        s.y -= 0.04;
+        if (s.y < -4) { s.y = H + 4; s.x = Math.random() * W; }
+      }
+      requestAnimationFrame(drawStars);
+    }
+    requestAnimationFrame(drawStars);
+
+    /* ── QR code ── */
+    fetch('/qr')
+      .then(r => r.json())
+      .then(({ qr, url }) => {
+        document.getElementById('qr-img').src = qr;
+        document.getElementById('url-text').textContent = url.replace('http://', '');
+      });
+
+    /* ── Prayer bubbles ── */
+    const wall  = document.getElementById('wall');
+    const hint  = document.getElementById('hint');
+    let hintHidden = false;
+
+    const PALETTE = [
+      { color: 'rgba(255, 252, 235, 0.92)', glow: '255, 240, 180' },
+      { color: 'rgba(255, 230, 160, 0.90)', glow: '255, 210, 120' },
+      { color: 'rgba(210, 235, 255, 0.88)', glow: '160, 210, 255' },
+      { color: 'rgba(255, 210, 140, 0.90)', glow: '255, 190, 100' },
+      { color: 'rgba(240, 255, 240, 0.88)', glow: '160, 255, 180' },
+    ];
+
+    function spawnBubble(text) {
+      if (!hintHidden) { hint.classList.add('hide'); hintHidden = true; }
+
+      const { color, glow } = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+      const dur     = (13 + Math.random() * 10).toFixed(1);
+      const left    = (8  + Math.random() * 68).toFixed(1);
+      const fs      = (0.95 + Math.random() * 0.55).toFixed(2);
+      const d1      = ((Math.random() - 0.5) * 60).toFixed(0) + 'px';
+      const d2      = ((Math.random() - 0.5) * 80).toFixed(0) + 'px';
+      const d3      = ((Math.random() - 0.5) * 50).toFixed(0) + 'px';
+
+      const el = document.createElement('div');
+      el.className = 'bubble';
+      el.textContent = text;
+      el.style.cssText = `
+        --dur: ${dur}s;
+        --d1:  ${d1};
+        --d2:  ${d2};
+        --d3:  ${d3};
+        left: ${left}%;
+        font-size: ${fs}rem;
+        color: ${color};
+        text-shadow:
+          0 0 12px rgba(${glow}, 0.85),
+          0 0 28px rgba(${glow}, 0.45),
+          0 0 55px rgba(${glow}, 0.20);
+        background: rgba(${glow}, 0.05);
+        border: 1px solid rgba(${glow}, 0.15);
+      `;
+
+      wall.appendChild(el);
+      setTimeout(() => el.remove(), (parseFloat(dur) + 0.5) * 1000);
+    }
+
+    /* ── WebSocket ── */
+    function connect() {
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(`${proto}//${location.host}/?role=display`);
+
+      ws.onmessage = ({ data }) => {
+        try {
+          const msg = JSON.parse(data);
+          if (msg.type === 'prayer') spawnBubble(msg.text);
+        } catch (_) {}
+      };
+
+      ws.onclose = () => setTimeout(connect, 3000);
+    }
+    connect();
+  </script>
+</body>
+</html>
