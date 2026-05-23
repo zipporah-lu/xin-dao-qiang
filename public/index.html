@@ -57,17 +57,17 @@
       max-width: 82vw;
       overflow: hidden;
       text-overflow: ellipsis;
-      animation: floatUp var(--dur) cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+      animation: floatToSpot var(--dur) cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
       pointer-events: none;
+      transition: opacity 0.8s;
     }
 
-    @keyframes floatUp {
-      0%   { transform: translateY(0)            translateX(0);                opacity: 0; }
-      6%   { opacity: 1; }
-      28%  { transform: translateY(calc(-28vh))  translateX(var(--d1)); }
-      55%  { transform: translateY(calc(-55vh))  translateX(var(--d2)); }
-      82%  { transform: translateY(calc(-82vh))  translateX(var(--d3)); opacity: 0.75; }
-      100% { transform: translateY(calc(-112vh)) translateX(var(--d1)); opacity: 0; }
+    .bubble.clearing { opacity: 0 !important; }
+
+    @keyframes floatToSpot {
+      0%   { transform: translateY(0) translateX(0); opacity: 0; }
+      10%  { opacity: 1; }
+      100% { transform: translateY(var(--stop)) translateX(var(--drift)); opacity: 1; }
     }
 
     /* Title */
@@ -163,6 +163,30 @@
     }
 
     #hint.hide { opacity: 0; }
+
+    /* Clear button */
+    #clear-btn {
+      position: fixed;
+      bottom: 28px;
+      left: 28px;
+      z-index: 20;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      color: rgba(255, 220, 140, 0.45);
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      font-family: inherit;
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      backdrop-filter: blur(8px);
+    }
+    #clear-btn:hover {
+      background: rgba(255, 80, 80, 0.12);
+      border-color: rgba(255, 100, 100, 0.3);
+      color: rgba(255, 160, 140, 0.85);
+    }
   </style>
 </head>
 <body>
@@ -176,6 +200,7 @@
   </div>
 
   <p id="hint">等候祈禱中…</p>
+  <button id="clear-btn" onclick="clearAll()">清除全部</button>
 
   <div id="info">
     <div id="info-inner">
@@ -252,21 +277,19 @@
       if (!hintHidden) { hint.classList.add('hide'); hintHidden = true; }
 
       const { color, glow } = PALETTE[Math.floor(Math.random() * PALETTE.length)];
-      const dur     = (13 + Math.random() * 10).toFixed(1);
-      const left    = (8  + Math.random() * 68).toFixed(1);
-      const fs      = (0.95 + Math.random() * 0.55).toFixed(2);
-      const d1      = ((Math.random() - 0.5) * 60).toFixed(0) + 'px';
-      const d2      = ((Math.random() - 0.5) * 80).toFixed(0) + 'px';
-      const d3      = ((Math.random() - 0.5) * 50).toFixed(0) + 'px';
+      const dur   = (2.5 + Math.random() * 1.5).toFixed(1);
+      const left  = (6 + Math.random() * 70).toFixed(1);
+      const fs    = (0.95 + Math.random() * 0.55).toFixed(2);
+      const stop  = -(25 + Math.random() * 58).toFixed(1) + 'vh';
+      const drift = ((Math.random() - 0.5) * 50).toFixed(0) + 'px';
 
       const el = document.createElement('div');
       el.className = 'bubble';
       el.textContent = text;
       el.style.cssText = `
-        --dur: ${dur}s;
-        --d1:  ${d1};
-        --d2:  ${d2};
-        --d3:  ${d3};
+        --dur:   ${dur}s;
+        --stop:  ${stop};
+        --drift: ${drift};
         left: ${left}%;
         font-size: ${fs}rem;
         color: ${color};
@@ -279,7 +302,15 @@
       `;
 
       wall.appendChild(el);
-      setTimeout(() => el.remove(), (parseFloat(dur) + 0.5) * 1000);
+    }
+
+    function clearAll() {
+      document.querySelectorAll('.bubble').forEach(b => {
+        b.classList.add('clearing');
+        setTimeout(() => b.remove(), 850);
+      });
+      hint.classList.remove('hide');
+      hintHidden = false;
     }
 
     /* ── WebSocket ── */
