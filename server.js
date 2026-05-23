@@ -80,8 +80,8 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => {
+const PORT = 3000;
+server.listen(PORT, () => {
   console.log('\n╔══════════════════════════════════════════╗');
   console.log('║           心禱牆  Prayer Wall             ║');
   console.log('╚══════════════════════════════════════════╝\n');
