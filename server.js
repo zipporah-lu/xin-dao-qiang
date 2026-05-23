@@ -33,16 +33,11 @@ function getLocalIP() {
 
 const localIP = getLocalIP();
 
-function getSubmitURL() {
-  if (process.env.RAILWAY_PUBLIC_DOMAIN) {
-    return `https://${process.env.RAILWAY_PUBLIC_DOMAIN}/submit`;
-  }
-  return `http://${localIP}:${PORT}/submit`;
-}
-
 app.get('/qr', async (req, res) => {
   try {
-    const url = getSubmitURL();
+    const proto = req.headers['x-forwarded-proto'] || 'http';
+    const host  = req.headers['x-forwarded-host'] || req.headers.host;
+    const url   = `${proto}://${host}/submit`;
     const qrDataURL = await QRCode.toDataURL(url, {
       width: 220,
       margin: 2,
